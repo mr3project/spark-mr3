@@ -280,7 +280,9 @@ private[mr3] class MR3TaskSetManager(
       }
     }
     if (isTaskStarted) {
-      logInfo(s"Task $mr3TaskId started on $executorId")
+      val taskName = s"${SparkMR3TaskID.toSparkTaskId(mr3TaskId)}_${SparkMR3TaskID.toTaskAttemptIdId(mr3TaskId)}"
+      val taskIndex = toTaskIndex(mr3TaskId)
+      logInfo(s"Task $taskName with index $taskIndex started on $executorId")
     }
   }
 
