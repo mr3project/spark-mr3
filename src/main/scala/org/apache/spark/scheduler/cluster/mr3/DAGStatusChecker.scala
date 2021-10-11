@@ -28,7 +28,7 @@ class DAGStatusChecker(
     name: String,
     dagClient: DAGClient,
     shouldKillDag: AtomicBoolean,
-    mr3TaskSetManager: DAGGStatusCheckerInterface,
+    mr3TaskSetManager: DAGStatusCheckerInterface,
     backend: MR3Backend)
   extends Logging {
 

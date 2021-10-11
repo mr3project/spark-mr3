@@ -38,7 +38,7 @@ private[mr3] object MR3TaskSetManagerState extends Enumeration {
   // Final state: Succeeded, Failed, Killed, Stopped
 }
 
-private[mr3] trait DAGGStatusCheckerInterface {
+private[mr3] trait DAGStatusCheckerInterface {
   def checkStatus(maybeDagStatus: Option[DAGStatus], serializer: => SerializerInstance): Boolean
 }
 
@@ -47,7 +47,7 @@ private[mr3] class MR3TaskSetManager(
     val sparkTaskIdStart: SparkTaskID,
     val dagClient: DAGClient,   // passed to DAGStatusChecker and never called directly in MR3TaskSetManager, except in shutdown hook
     backend: MR3Backend) extends Schedulable
-  with DAGGStatusCheckerInterface
+  with DAGStatusCheckerInterface
   with Logging {
 
   import MR3TaskSetManagerState._
@@ -506,7 +506,7 @@ private[mr3] class MR3TaskSetManager(
   }
 
   //
-  // DAGGStatusCheckerInterface
+  // DAGStatusCheckerInterface
   //
 
   def checkStatus(maybeDagStatus: Option[DAGStatus], serializer: => SerializerInstance): Boolean = {
