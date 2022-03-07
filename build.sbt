@@ -19,7 +19,7 @@ scalaVersion := "2.12.10"
 
 libraryDependencies ++= Seq(
   "com.datamonad.mr3" % "mr3-core" % "1.0" % "provided",
-  "org.apache.spark" % "spark-core_2.12" % "3.0.3" % "provided"
+  "org.apache.spark" % "spark-core_2.12" % "3.2.1" % "provided"
 )
 
 resolvers += Resolver.mavenLocal

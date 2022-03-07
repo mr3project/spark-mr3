@@ -17,6 +17,7 @@ package org.apache.spark.scheduler.cluster.mr3
 import java.nio.ByteBuffer
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+
 import javax.annotation.concurrent.GuardedBy
 import com.datamonad.mr3.api.common.{MR3Conf, MR3ConfBuilder, MR3Constants}
 import com.datamonad.mr3.DAGAPI
@@ -30,14 +31,16 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config.{BARRIER_SYNC_TIMEOUT, CPUS_PER_TASK, EXECUTOR_CORES}
 import org.apache.spark.launcher.SparkLauncher
 import org.apache.spark.rpc.RpcEndpointAddress
-import org.apache.spark.scheduler.{DAGScheduler, ExecutorCacheTaskLocation, ExecutorLossReason, HDFSCacheTaskLocation, HostTaskLocation, Pool, SchedulerBackend, SchedulingMode, SparkListenerExecutorAdded, SparkListenerExecutorRemoved, TaskDescription, TaskLocation, TaskScheduler, TaskSet, TaskSetManager}
+import org.apache.spark.scheduler.{DAGScheduler, ExecutorCacheTaskLocation, ExecutorDecommissionInfo, ExecutorDecommissionState, ExecutorLossReason, HDFSCacheTaskLocation, HostTaskLocation, Pool, SchedulerBackend, SchedulingMode, SparkListenerExecutorAdded, SparkListenerExecutorRemoved, TaskDescription, TaskLocation, TaskScheduler, TaskSet, TaskSetManager}
 import org.apache.spark.scheduler.SchedulingMode.SchedulingMode
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages.StopDriver
 import org.apache.spark.scheduler.cluster.ExecutorData
 import org.apache.spark.storage.BlockManagerId
 import org.apache.spark.util.{AccumulatorV2, ShutdownHookManager, ThreadUtils}
-
 import java.util.Properties
+
+import org.apache.spark.resource.ResourceProfile
+
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -281,9 +284,13 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
     assert { false }
   }
 
+  // We don't support ResourceProfile as of now,
+  // so we assume that all executors have the same ResourceProfile(ID).
+  def maxNumConcurrentTasks(rp: ResourceProfile): Int = maxNumConcurrentTasks()
+
   // return the max number of tasks that can be concurrently launched
   // return 0 if no executors are running (Cf. CoarseGrainedSchedulerBackend.scala in Spark)
-  def maxNumConcurrentTasks(): Int = {
+  private def maxNumConcurrentTasks(): Int = {
     val currentNumExecutors = numExecutors.get()
     val numTasksPerExecutor = coresPerExecutor / cpusPerTask
     numTasksPerExecutor * currentNumExecutors
@@ -300,6 +307,7 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
 
     val epoch = sc.env.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster].getEpoch
     val addedFiles = mutable.HashMap[String, Long](sc.addedFiles.toSeq: _*)
+    val addedArchives = mutable.HashMap[String, Long](sc.addedArchives.toSeq: _*)
     val addedJars = mutable.HashMap[String, Long](sc.addedJars.toSeq: _*)
     val numTasks = taskSet.tasks.length
     val sparkTaskIdStart = nextTaskId
@@ -334,6 +342,7 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
             partitionId = task.partitionId,
             addedFiles = addedFiles,
             addedJars = addedJars,
+            addedArchives = addedArchives,
             task.localProperties,
             resources = Map.empty,
             serializedTask)
@@ -476,6 +485,13 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
     logError("Running MR3Backend with Spark Standalone Cluster is denied.")
     assert { false }
   }
+
+  def executorDecommission(executorId:  String, decommissionInfo:  ExecutorDecommissionInfo): Unit = {
+    logError("executorDecommission() cannot be called in Spark-MR3.")
+    assert { false }
+  }
+
+  def getExecutorDecommissionState(executorId: String): Option[ExecutorDecommissionState] = None
 
   //
   // MR3BackendDriverEndpointInterface

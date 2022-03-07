@@ -91,6 +91,7 @@ private[mr3] class MR3TaskSetManager(
   val stageId: Int = taskSet.stageId
   val name: String = taskSet.id
 
+  val isSchedulable = true
   def addSchedulable(schedulable: Schedulable): Unit = {}
   def removeSchedulable(schedulable: Schedulable): Unit = {}
   def getSchedulableByName(name: String): Schedulable = null
@@ -98,7 +99,11 @@ private[mr3] class MR3TaskSetManager(
     // In Spark on MR3, task resubmission is done by MR3.
     // So we omit calling DAGScheduler.taskEnded(task, Resubmitted, ...) here.
   }
-  def checkSpeculatableTasks(minTimeToSpeculation: Int): Boolean = false
+  def executorDecommission(executorId: String): Unit = {
+    // Spark v3.2.1 re-computes TaskLocality in this method.
+    // Because MR3TaskSetManager does not manage TaskLocality, it does nothing.
+  }
+  def checkSpeculatableTasks(minTimeToSpeculation: Long): Boolean = false
   def getSortedTaskSetQueue: mutable.ArrayBuffer[TaskSetManager] = new mutable.ArrayBuffer
 
   private[this] val clock = new SystemClock()
