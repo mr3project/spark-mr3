@@ -319,6 +319,27 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
     var emittedTaskSizeWarning = false
     var index = 0
 
+    val vertexCommonTaskDescription = {
+      val properties = taskSet.tasks(0).localProperties
+      new TaskDescription(
+        taskId = -1L,
+        attemptNumber = -1,
+        executorId = "",
+        name = "",
+        index = -1,
+        partitionId = -1,
+        addedFiles = addedFiles,
+        addedJars = addedJars,
+        addedArchives = addedArchives,
+        properties,
+        resources = Map.empty,
+        ByteBuffer.allocate(0)
+      )
+    }
+
+    val emptyMap = mutable.Map.empty[String, Long]
+    val emptyProperties = new Properties
+
     try {
       while (index < numTasks) {
         val task = taskSet.tasks(index)
@@ -340,10 +361,10 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
             name = s"task $taskId in stage ${taskSet.id}",
             index = index,
             partitionId = task.partitionId,
-            addedFiles = addedFiles,
-            addedJars = addedJars,
-            addedArchives = addedArchives,
-            task.localProperties,
+            addedFiles = emptyMap,
+            addedJars = emptyMap,
+            addedArchives = emptyMap,
+            emptyProperties,
             resources = Map.empty,
             serializedTask)
         taskLocationHints(index) = task.preferredLocations.flatMap {
@@ -368,7 +389,7 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
         // Thus using fake addresses is okay for Spark-MR3 (which does not fully support barrier jobs).
         // Note that the fake addresses can be obtained via BarrierTaskContext.getTaskInfos().
         val taskIds = (0 until numTasks).mkString(",")
-        taskDescriptions foreach { _.properties.setProperty("addresses", taskIds) }
+        vertexCommonTaskDescription.properties.setProperty("addresses", taskIds)
       }
 
       taskSetManagersLock.synchronized {
@@ -376,7 +397,8 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
         // So stay inside taskSetManagersLock.synchronized{} until registerTaskSetManager() returns.
         val dagClient = sparkMr3Client.submitTasks(
             priority = taskSet.priority, stageId = taskSet.stageId,
-            taskDescriptions, taskLocationHints, sparkConf, dagConf, Option(credentials.get))
+            taskDescriptions, taskLocationHints, vertexCommonTaskDescription, sparkConf, dagConf,
+            Option(credentials.get))
         // sparkMr3Client.mr3Client is MR3SessionClient, and we have dagClient.ownDagClientHandler == false.
         // hence dagClient.close() should NOT be called.
         val taskSetMgr = new MR3TaskSetManager(taskSet, sparkTaskIdStart, dagClient, backend = this)

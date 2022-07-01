@@ -42,12 +42,16 @@ private[mr3] object DAG {
       taskDescriptions: Array[TaskDescription],
       taskLocationHints: Array[Seq[String]],
       driverUrl: String,
+      vertexCommonTaskDescription: TaskDescription,
       sparkConf: SparkConf,
       dagConf: DAGAPI.ConfigurationProto.Builder,
       credentials: Option[Credentials],
       ioEncryptionKey: Option[Array[Byte]]): DAGProto = {
-    val containerGroup = getContainerGroupBuilder(applicationId = applicationId, driverUrl = driverUrl, sparkConf, ioEncryptionKey)
-    val workerVertex = getWorkerVertexBuilder(applicationId, stageId, taskDescriptions, taskLocationHints, sparkConf)
+    val containerGroup = getContainerGroupBuilder(
+      applicationId = applicationId, driverUrl = driverUrl, sparkConf, ioEncryptionKey)
+
+    val workerVertex = getWorkerVertexBuilder(
+      applicationId, stageId, taskDescriptions, taskLocationHints, vertexCommonTaskDescription, sparkConf)
 
     val dagProtoBuilder = DAGProto.newBuilder
       .setName(s"${applicationId}_$stageId")
@@ -136,28 +140,18 @@ private[mr3] object DAG {
       stageId: Int,
       taskDescriptions: Array[TaskDescription],
       taskLocationHints: Array[Seq[String]],
+      vertexCommonTaskDescription: TaskDescription,
       sparkConf: SparkConf): VertexProto.Builder = {
     val numTasks = taskDescriptions.length
-
-    def taskDescriptionToEntityDescriptorProto(
-        taskDescription: TaskDescription): DAGAPI.EntityDescriptorProto.Builder = {
-      val taskId = taskDescription.taskId
-      val serializedTaskDescription = TaskDescription.encode(taskDescription)
-
-      val className = s"$stageId-$taskId"
-      val userPayload = DAGAPI.UserPayloadProto.newBuilder
-        .setPayload(ByteString.copyFrom(serializedTaskDescription))
-
-      DAGAPI.EntityDescriptorProto.newBuilder
-        .setClassName(className)
-        .setUserPayload(userPayload)
-    }
 
     val processorSetProto = DAGAPI.ProcessorSetProto.newBuilder.setNumProcessors(numTasks)
     var i = 0
     while (i < numTasks) {
       val taskDesc = taskDescriptions(i)
-      val processor = taskDescriptionToEntityDescriptorProto(taskDesc)
+      val userPayload = taskDescriptionToUserPayload(taskDesc)
+      val processor = DAGAPI.EntityDescriptorProto.newBuilder
+          .setClassName(s"$stageId-${taskDesc.taskId}")
+          .setUserPayload(userPayload)
       processorSetProto.addProcessors(processor)
       i += 1
     }
@@ -170,8 +164,11 @@ private[mr3] object DAG {
       .setClassName(WORKER_VERTEX_NAME)
       .setUserPayload(workerVertexManagerPayload)
 
+    val vertexCommonTaskPayload = taskDescriptionToUserPayload(vertexCommonTaskDescription)
+
     val workerVertexProcessor = DAGAPI.EntityDescriptorProto.newBuilder
       .setClassName(WORKER_VERTEX_PROCESSOR_PREFIX + stageId)
+      .setUserPayload(vertexCommonTaskPayload)
 
     // use sparkConf because workerVertexResource is fixed for all DAGs
     val workerVertexResource = getResource(
@@ -198,6 +195,12 @@ private[mr3] object DAG {
     }
 
     vertexProtoBuilder
+  }
+
+  private def taskDescriptionToUserPayload(taskDesc: TaskDescription): DAGAPI.UserPayloadProto.Builder = {
+    val serializedTaskDescription = TaskDescription.encode(taskDesc)
+    DAGAPI.UserPayloadProto.newBuilder
+      .setPayload(ByteString.copyFrom(serializedTaskDescription))
   }
 
   private def getContainerGroupName(applicationId: String): String =

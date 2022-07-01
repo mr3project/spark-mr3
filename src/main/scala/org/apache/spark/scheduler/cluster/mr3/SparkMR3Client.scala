@@ -175,6 +175,7 @@ private[mr3] class SparkMR3Client(
       stageId: Int,
       taskDescriptions: Array[TaskDescription],
       taskLocationHints: Array[Seq[String]],
+      vertexCommonTaskDescription: TaskDescription,
       sparkConf: SparkConf,
       dagConf: DAGAPI.ConfigurationProto.Builder,
       credentials: Option[Credentials]): DAGClient = {
@@ -195,7 +196,8 @@ private[mr3] class SparkMR3Client(
     val amLocalResources = Map.empty[String, LocalResource]
     val dagProto = DAG.createDag(
         applicationId = sparkApplicationId, priority = priority, stageId = stageId,
-        taskDescriptions, modifiedTaskLocationHints, driverUrl = driverUrl, sparkConf, dagConf, credentials, ioEncryptionKey)
+        taskDescriptions, modifiedTaskLocationHints, driverUrl = driverUrl, vertexCommonTaskDescription,
+        sparkConf, dagConf, credentials, ioEncryptionKey)
 
     val dagClient = mr3Client.submitDag(amLocalResources, amCredentials, dagProto)
     numDagsSubmitted.incrementAndGet()
