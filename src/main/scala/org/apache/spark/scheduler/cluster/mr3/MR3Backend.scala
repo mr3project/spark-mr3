@@ -369,7 +369,10 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
             serializedTask)
         taskLocationHints(index) = task.preferredLocations.flatMap {
           case e: ExecutorCacheTaskLocation =>
-            assert { e.executorId.contains('#') }   // Cf. SparkRuntimeEnv.createExecutorBackend()
+            // Cf. SparkRuntimeEnv.createExecutorBackend()
+            // In LocalThreadMaster-LocalWorker mode, executorId includes "driver" instead of '#'
+            // because MR3ExecutorBackend uses the existing SparkEnv created by driver.
+            assert { e.executorId.contains('#') || e.executorId.contains("driver") }
             Seq(e.executorId.split('#').head, e.host)
           case h: HostTaskLocation =>
             Some(h.host)
