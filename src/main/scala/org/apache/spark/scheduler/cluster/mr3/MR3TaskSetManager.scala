@@ -25,7 +25,7 @@ import org.apache.spark.{ExceptionFailure, FetchFailed, Success, TaskFailedReaso
 import org.apache.spark.internal.{Logging, config}
 import org.apache.spark.scheduler.SchedulingMode.SchedulingMode
 import org.apache.spark.scheduler.cluster.mr3.SparkMR3TaskID.{MR3TaskID, SparkTaskID}
-import org.apache.spark.scheduler.{DirectTaskResult, ExecutorLossReason, Pool, Schedulable, SchedulingMode, Task, TaskInfo, TaskLocality, TaskSet, TaskSetManager}
+import org.apache.spark.scheduler.{DirectTaskResult, ExecutorLossReason, Pool, Schedulable, SchedulingMode, ShuffleMapTask, Task, TaskInfo, TaskLocality, TaskSet, TaskSetManager}
 import org.apache.spark.serializer.SerializerInstance
 import org.apache.spark.util.{SystemClock, Utils => SparkUtils}
 
@@ -56,6 +56,7 @@ private[mr3] class MR3TaskSetManager(
   private[this] val numTasks: Int = tasks.length
   private[this] val numRunningTaskAttempts: AtomicInteger = new AtomicInteger(0)
   private[this] val isBarrier: Boolean = tasks.nonEmpty && tasks(0).isBarrier
+  private[this] val isShuffleMapTasks = tasks(0).isInstanceOf[ShuffleMapTask]
 
   private def toTaskIndex(mr3TaskId: MR3TaskID): Int = {
     val taskIndex = (SparkMR3TaskID.toSparkTaskId(mr3TaskId) - sparkTaskIdStart).toInt
@@ -499,7 +500,7 @@ private[mr3] class MR3TaskSetManager(
       calculatedTasks += 1
       (totalResultSize, calculatedTasks)
     }
-    if (MAX_RESULT_SIZE > 0 && currentResultSize > MAX_RESULT_SIZE) {
+    if (!isShuffleMapTasks && MAX_RESULT_SIZE > 0 && currentResultSize > MAX_RESULT_SIZE) {
       val msg = s"Total size of serialized results of $numFinishedTask tasks " +
         s"(${SparkUtils.bytesToString(currentResultSize)}) is bigger than ${config.MAX_RESULT_SIZE.key} " +
         s"(${SparkUtils.bytesToString(MAX_RESULT_SIZE)})"
