@@ -13,13 +13,13 @@
  */
 
 name := "spark-mr3"
-version := "3.2.1"  // should be equal to SPARK_MR3_REV in env.sh
+version := "3.2.2"  // should be equal to SPARK_MR3_REV in env.sh
 
 scalaVersion := "2.12.10"
 
 libraryDependencies ++= Seq(
   "com.datamonad.mr3" % "mr3-core" % "1.0" % "provided",
-  "org.apache.spark" % "spark-core_2.12" % "3.2.1" % "provided"
+  "org.apache.spark" % "spark-core_2.12" % "3.2.2" % "provided"
 )
 
 resolvers += Resolver.mavenLocal
