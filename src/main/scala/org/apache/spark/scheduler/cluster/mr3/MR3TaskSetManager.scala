@@ -350,7 +350,7 @@ private[mr3] class MR3TaskSetManager(
     taskSucceededFlags(index) = true
     numSucceededTasks += 1
     numRunningTaskAttempts.getAndDecrement()
-    assert { numRunningTaskAttemptsOkay }
+    // assert { numRunningTaskAttemptsOkay }  // disable assert{} for performance
   }
 
   // Called by MR3TaskResultGetter threads
