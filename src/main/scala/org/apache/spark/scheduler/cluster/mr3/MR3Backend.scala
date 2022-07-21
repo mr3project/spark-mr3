@@ -546,7 +546,7 @@ class MR3Backend(val sc: SparkContext) extends TaskScheduler
               logWarning(s"Ignore TaskState in stateUpdate: $state, $mr3TaskId")
           }
         case None =>
-          logError(
+          logWarning(
             ("Ignoring update with state %s for TID %s because its task set is gone (this is " +
               "likely the result of receiving duplicate task finished status updates) or its " +
               "executor has been marked as failed.")
